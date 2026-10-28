@@ -1,0 +1,19 @@
+{
+  "name": "deped-heat-index-monitoring-system",
+  "version": "1.0.0",
+  "description": "DepEd Heat Index Monitoring & Advisory System compliant with DepEd Order No. 037, s. 2022",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "deped",
+    "heat-index",
+    "pagasa",
+    "philippines",
+    "weather",
+    "school-safety"
+  ],
+  "author": "DepEd DRRM Operations Center",
+  "license": "MIT"
+}

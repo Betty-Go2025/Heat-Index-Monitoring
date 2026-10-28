@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DepEd Heat Index Monitoring & Advisory System</title>
+  <meta name="description" content="Official Philippine DepEd Heat Index Monitoring System compliant with DepEd Order No. 037, s. 2022 and PAGASA guidelines.">
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            deped: {
+              blue: '#0B3D91',
+              darkblue: '#07265E',
+              red: '#C9182B',
+              gold: '#FDB813',
+              lightgold: '#FEF3C7',
+            },
+            pagasa: {
+              safe: '#10B981',
+              caution: '#F59E0B',
+              extremeCaution: '#F97316',
+              danger: '#EF4444',
+              extremeDanger: '#881337',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Google Fonts & Custom CSS -->
+  <link rel="stylesheet" href="styles.css">
+  <!-- Chart.js for Trend Analysis -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- TOP HEADER / DEPED BANNER -->
+  <header class="bg-deped-blue text-white shadow-lg sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between py-3">
+        <!-- Brand / Identity -->
+        <div class="flex items-center space-x-3">
+          <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center p-1 shadow-md border-2 border-deped-gold">
+            <!-- DepEd Shield Icon Placeholder -->
+            <svg class="w-10 h-10 text-deped-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs tracking-wider uppercase font-semibold text-amber-300">Republic of the Philippines • Department of Education</span>
+            </div>
+            <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              School Heat Index Monitoring System
+            </h1>
+          </div>
+        </div>
+
+        <!-- Right Quick Controls -->
+        <div class="flex items-center space-x-2 sm:space-x-4">
+          <!-- Audio Alert Toggle -->
+          <button id="soundToggleBtn" onclick="toggleAudioAlert()" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-900/60 hover:bg-blue-800 text-blue-100 transition border border-blue-400/30">
+            <span id="soundIcon">🔔</span>
+            <span id="soundStatusText" class="hidden sm:inline">Alert Audio: On</span>
+          </button>
+
+          <!-- Current Time & Live Clock -->
+          <div class="text-right hidden md:block border-l border-blue-700/60 pl-4">
+            <div id="liveClock" class="text-sm font-semibold tracking-wide text-amber-200">--:--:-- --</div>
+            <div id="liveDate" class="text-[11px] text-blue-200">Philippine Standard Time</div>
+          </div>
+
+          <!-- School Profile Setup Modal Trigger -->
+          <button onclick="openSchoolModal()" title="Configure School Details" class="p-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 font-medium transition flex items-center gap-1.5 text-xs shadow">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            <span class="hidden sm:inline">School Info</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex space-x-1 sm:space-x-3 overflow-x-auto py-2 border-t border-blue-700/50 text-xs sm:text-sm">
+        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active-tab px-3.5 py-1.5 rounded-md font-medium text-white bg-blue-700/80 transition flex items-center gap-1.5 whitespace-nowrap">
+          📊 Heat Dashboard
+        </button>
+        <button onclick="switchTab('pagasatable')" id="tab-pagasatable" class="tab-btn px-3.5 py-1.5 rounded-md font-medium text-blue-100 hover:text-white hover:bg-blue-800 transition flex items-center gap-1.5 whitespace-nowrap">
+          🇵🇭 PAGASA Stations Bulletin
+        </button>
+        <button onclick="switchTab('calculator')" id="tab-calculator" class="tab-btn px-3.5 py-1.5 rounded-md font-medium text-blue-100 hover:text-white hover:bg-blue-800 transition flex items-center gap-1.5 whitespace-nowrap">
+          🧮 Live Calculator & Forecast
+        </button>
+        <button onclick="switchTab('rooms')" id="tab-rooms" class="tab-btn px-3.5 py-1.5 rounded-md font-medium text-blue-100 hover:text-white hover:bg-blue-800 transition flex items-center gap-1.5 whitespace-nowrap">
+          🏫 Classroom Heat Index Logger
+        </button>
+        <button onclick="switchTab('advisory')" id="tab-advisory" class="tab-btn px-3.5 py-1.5 rounded-md font-medium text-blue-100 hover:text-white hover:bg-blue-800 transition flex items-center gap-1.5 whitespace-nowrap">
+          📢 Official DepEd Notice Generator
+        </button>
+        <button onclick="switchTab('firstaid')" id="tab-firstaid" class="tab-btn px-3.5 py-1.5 rounded-md font-medium text-blue-100 hover:text-white hover:bg-blue-800 transition flex items-center gap-1.5 whitespace-nowrap">
+          🩺 Health & First-Aid Guidelines
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- CRITICAL ALERT NOTIFICATION STRIP (Conditional) -->
+  <div id="urgentAlertBanner" class="hidden bg-red-600 text-white px-4 py-2.5 shadow-md">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="text-2xl animate-bounce">⚠️</span>
+        <div>
+          <span class="font-extrabold tracking-wider uppercase text-xs bg-black/30 px-2 py-0.5 rounded">DEPED MANDATORY ACTION</span>
+          <p id="urgentAlertText" class="text-sm font-semibold mt-0.5">
+            Heat Index has reached DANGER tier (42°C+). Schools authorized to shift immediately to Alternative Delivery Modes (ADM).
+          </p>
+        </div>
+      </div>
+      <button onclick="switchTab('advisory')" class="bg-white text-red-700 hover:bg-red-50 text-xs font-bold px-3 py-1.5 rounded shadow transition whitespace-nowrap">
+        Generate Advisory Memo →
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- TAB 1: MAIN DASHBOARD -->
+    <section id="view-dashboard" class="tab-content space-y-6">
+      
+      <!-- Top Overview Bar with Active School Info -->
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs uppercase font-bold text-deped-blue tracking-wide" id="dispSchoolDivision">Division of Manila • Region NCR</span>
+            <span class="text-[11px] bg-slate-100 text-slate-600 font-mono px-2 py-0.5 rounded border" id="dispSchoolId">ID: 301234</span>
+          </div>
+          <h2 class="text-xl sm:text-2xl font-black text-slate-800" id="dispSchoolName">Ramon Magsaysay High School</h2>
+          <p class="text-xs text-slate-500 mt-0.5">
+            School DRRM Operations Center • Principal/Head: <span id="dispPrincipalName" class="font-semibold text-slate-700">Dr. Maria Santos</span>
+          </p>
+        </div>
+
+        <!-- Quick Location Selector for Live Weather -->
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="relative">
+            <select id="quickCitySelect" onchange="onCitySelected(this.value)" class="text-xs font-medium bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 pr-8 text-slate-700 focus:outline-none focus:ring-2 focus:ring-deped-blue">
+              <!-- Philippine cities populated by JS -->
+            </select>
+          </div>
+          <button onclick="fetchCurrentGpsWeather()" class="bg-blue-50 text-deped-blue border border-blue-200 hover:bg-blue-100 text-xs px-3 py-2 rounded-lg font-medium transition flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            GPS Auto-Detect
+          </button>
+          <button onclick="refreshWeatherData()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs px-2.5 py-2 rounded-lg font-medium transition" title="Refresh Weather Data">
+            🔄
+          </button>
+        </div>
+      </div>
+
+      <!-- MAIN METRICS & GAUGE SECTION -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left: Current Heat Index Dial & Status (5 Cols) -->
+        <div class="lg:col-span-5 bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col items-center justify-between relative overflow-hidden">
+          <div class="w-full flex items-center justify-between mb-2">
+            <span class="text-xs font-bold tracking-wider text-slate-400 uppercase">PAGASA Heat Index Gauge</span>
+            <span id="readingTimestamp" class="text-[11px] text-slate-500 font-mono">Updated just now</span>
+          </div>
+
+          <!-- Semicircular Dynamic Gauge -->
+          <div class="relative w-64 h-36 flex items-center justify-center mt-2">
+            <svg class="w-64 h-36" viewBox="0 0 200 110">
+              <!-- Gauge Arc Backgrounds -->
+              <!-- Green (Safe <27) -->
+              <path d="M 20 95 A 80 80 0 0 1 45 42" fill="none" stroke="#10b981" stroke-width="14" stroke-linecap="round"/>
+              <!-- Yellow (Caution 27-32) -->
+              <path d="M 45 42 A 80 80 0 0 1 78 20" fill="none" stroke="#f59e0b" stroke-width="14"/>
+              <!-- Orange (Extreme Caution 33-41) -->
+              <path d="M 78 20 A 80 80 0 0 1 122 20" fill="none" stroke="#f97316" stroke-width="14"/>
+              <!-- Red (Danger 42-51) -->
+              <path d="M 122 20 A 80 80 0 0 1 155 42" fill="none" stroke="#ef4444" stroke-width="14"/>
+              <!-- Maroon (Extreme Danger >=52) -->
+              <path d="M 155 42 A 80 80 0 0 1 180 95" fill="none" stroke="#881337" stroke-width="14" stroke-linecap="round"/>
+              
+              <!-- Center Hub -->
+              <circle cx="100" cy="95" r="9" fill="#1e293b"/>
+              <circle cx="100" cy="95" r="4" fill="#ffffff"/>
+              <!-- Needle -->
+              <line id="gaugeNeedle" x1="100" y1="95" x2="35" y2="95" stroke="#1e293b" stroke-width="4.5" stroke-linecap="round" class="gauge-needle" style="transform: rotate(0deg);"/>
+            </svg>
+          </div>
+
+          <!-- Big Numerical Display -->
+          <div class="text-center mt-3">
+            <div class="flex items-baseline justify-center">
+              <span id="currentHeatIndexVal" class="text-5xl sm:text-6xl font-black tracking-tight text-slate-800">42.5</span>
+              <span class="text-2xl font-bold text-slate-500 ml-1">°C</span>
+            </div>
+            <div class="mt-1">
+              <span id="currentHeatLevelBadge" class="inline-block px-4 py-1 rounded-full text-xs sm:text-sm font-extrabold uppercase tracking-wide bg-red-100 text-red-800 border border-red-300">
+                PANGANIB (DANGER)
+              </span>
+            </div>
+          </div>
+
+          <!-- Secondary Climate Readings -->
+          <div class="w-full grid grid-cols-2 gap-3 mt-6 pt-4 border-t border-slate-100">
+            <div class="bg-slate-50 rounded-xl p-3 text-center border border-slate-200">
+              <div class="text-[11px] font-semibold text-slate-500 uppercase">Ambient Air Temp</div>
+              <div class="text-xl font-bold text-slate-800 mt-0.5"><span id="currentAirTemp">34.0</span>°C</div>
+              <div class="text-[10px] text-slate-400">Dry-Bulb Thermometer</div>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-3 text-center border border-slate-200">
+              <div class="text-[11px] font-semibold text-slate-500 uppercase">Relative Humidity</div>
+              <div class="text-xl font-bold text-slate-800 mt-0.5"><span id="currentHumidity">65</span>%</div>
+              <div class="text-[10px] text-slate-400">Moisture Content</div>
+            </div>
+          </div>
+
+          <!-- PAGASA Scale Legend Reference -->
+          <div class="w-full mt-4 bg-slate-50 rounded-lg p-2.5 border border-slate-200">
+            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 text-center">PAGASA Heat Scale</div>
+            <div class="grid grid-cols-4 gap-1 text-[9px] text-center font-bold">
+              <div class="bg-emerald-100 text-emerald-800 py-1 rounded">&lt;33°C<br>Normal</div>
+              <div class="bg-amber-100 text-amber-800 py-1 rounded">33-41°C<br>Extreme Caution</div>
+              <div class="bg-red-100 text-red-800 py-1 rounded">42-51°C<br>Danger</div>
+              <div class="bg-rose-900 text-white py-1 rounded">≥52°C<br>Extreme Danger</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right: Official DepEd Decision Engine & Directives (7 Cols) -->
+        <div class="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div class="flex items-center space-x-2">
+                <span class="w-3 h-3 rounded-full bg-deped-blue"></span>
+                <h3 class="text-base font-bold text-slate-800">DepEd Institutional Directives & Protocols</h3>
+              </div>
+              <span class="text-xs bg-blue-50 text-deped-blue px-2.5 py-1 rounded font-semibold border border-blue-200">
+                DepEd Order No. 037, s. 2022
+              </span>
+            </div>
+
+            <!-- Primary Protocol Card: In-Person Classes Status -->
+            <div id="protocolClassStatusCard" class="mt-4 p-4 rounded-xl border-2 transition-all duration-300 bg-red-50 border-red-300">
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="text-xs font-bold uppercase tracking-wider text-red-700">In-Person Classes Directive</div>
+                  <div id="protocolClassStatusTitle" class="text-lg font-black text-red-900 mt-0.5">
+                    AUTOMATIC SHIFT TO ALTERNATIVE DELIVERY MODES (ADM)
+                  </div>
+                </div>
+                <span id="protocolClassStatusIcon" class="text-3xl">🚫</span>
+              </div>
+              <p id="protocolClassStatusDesc" class="text-xs sm:text-sm text-red-800 mt-2 leading-relaxed">
+                As heat index reaches or exceeds 42°C, in-person classes are suspended. School heads are mandated to immediately transition to Modular Distance Learning, Online Learning, or Blended Modalities to protect learners and school personnel.
+              </p>
+            </div>
+
+            <!-- Action Directives Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+              
+              <!-- Directive 1: Outdoor & PE Activities -->
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="text-base">🏃</span>
+                  <div class="text-xs font-bold text-slate-700 uppercase">Outdoor & Physical Activities</div>
+                </div>
+                <div id="directiveOutdoorStatus" class="text-xs font-bold text-red-600 mb-1">STRICTLY PROHIBITED</div>
+                <p id="directiveOutdoorDesc" class="text-xs text-slate-600 leading-normal">
+                  All flag ceremonies, physical education (PE) sessions, sports training, and outdoor assemblies are cancelled.
+                </p>
+              </div>
+
+              <!-- Directive 2: Classroom Ventilation & Cooling -->
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="text-base">💨</span>
+                  <div class="text-xs font-bold text-slate-700 uppercase">Classroom Environment</div>
+                </div>
+                <div id="directiveVentilationStatus" class="text-xs font-bold text-slate-800 mb-1">Maximize Air Circulation</div>
+                <p id="directiveVentilationDesc" class="text-xs text-slate-600 leading-normal">
+                  Open all windows and doors for cross-ventilation. Ensure electric fans are positioned for optimal airflow. Transfer classes from upper/tin-roof rooms.
+                </p>
+              </div>
+
+              <!-- Directive 3: Uniform Concession Policy -->
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="text-base">👕</span>
+                  <div class="text-xs font-bold text-slate-700 uppercase">Uniform & Attire Relief</div>
+                </div>
+                <div id="directiveUniformStatus" class="text-xs font-bold text-blue-700 mb-1">Relaxed Uniform Policy</div>
+                <p id="directiveUniformDesc" class="text-xs text-slate-600 leading-normal">
+                  DepEd permits students and teachers to wear comfortable, light-colored clothing or school PE uniforms in place of heavy regular school uniforms.
+                </p>
+              </div>
+
+              <!-- Directive 4: Hydration & Health Monitoring -->
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="text-base">💧</span>
+                  <div class="text-xs font-bold text-slate-700 uppercase">Hydration Protocol</div>
+                </div>
+                <div id="directiveHydrationStatus" class="text-xs font-bold text-emerald-700 mb-1">30-Min Water Breaks</div>
+                <p id="directiveHydrationDesc" class="text-xs text-slate-600 leading-normal">
+                  Teachers must instruct mandatory hydration breaks every 30 minutes. School water stations must be verified and operational.
+                </p>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Bottom Action Buttons -->
+          <div class="mt-6 pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+            <div class="text-xs text-slate-500">
+              Authority: <strong class="text-slate-700">School Head / Principal Discretion & LGU Coordination</strong>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="switchTab('advisory')" class="bg-deped-blue hover:bg-deped-darkblue text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow flex items-center gap-1.5">
+                <span>📝</span> Draft Official School Memo
+              </button>
+              <button onclick="switchTab('firstaid')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-lg transition border border-slate-300">
+                First-Aid Steps →
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- 24-HOUR HOURLY HEAT INDEX FORECAST & TREND CHART -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
+          <div>
+            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+              <span>📈</span> 24-Hour Heat Index Progression & Forecast
+            </h3>
+            <p class="text-xs text-slate-500">Hourly projected heat index based on meteorological forecasts to plan class shifts in advance</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center text-[11px] font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md">
+              <span class="w-2.5 h-2.5 rounded-full bg-red-500 mr-1.5"></span> Red Line: 42°C DepEd Danger Threshold
+            </span>
+          </div>
+        </div>
+
+        <!-- Chart Canvas -->
+        <div class="relative w-full h-64 sm:h-72 mt-4">
+          <canvas id="hourlyTrendChart"></canvas>
+        </div>
+
+      </section>
+
+    <!-- TAB: DOST-PAGASA OFFICIAL SYNOPTIC STATIONS BULLETIN -->
+    <section id="view-pagasatable" class="tab-content hidden space-y-6">
+      
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between pb-4 border-b border-slate-200 gap-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs uppercase font-extrabold text-blue-700 tracking-wider">DOST-PAGASA Weather & Heat Monitoring Network</span>
+              <span class="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">Synoptic Stations</span>
+            </div>
+            <h2 class="text-xl sm:text-2xl font-black text-slate-800 mt-0.5 flex items-center gap-2">
+              <span>🇵🇭</span> Latest PAGASA Heat Index Bulletin
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">
+              Real-time monitoring across DOST-PAGASA surface synoptic stations nationwide. Schools can match their local division directly to the nearest PAGASA monitoring observatory.
+            </p>
+          </div>
+
+          <!-- External Links to Official PAGASA Portals -->
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <a href="https://pagasa.dost.gov.ph/weather/heat-index" target="_blank" rel="noopener noreferrer" class="bg-blue-50 hover:bg-blue-100 text-deped-blue border border-blue-200 font-bold px-3 py-2 rounded-lg transition flex items-center gap-1 shadow-sm">
+              <span>🌐</span> PAGASA Heat Portal &rarr;
+            </a>
+            <a href="https://iheatmap.pagasa.dost.gov.ph" target="_blank" rel="noopener noreferrer" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold px-3 py-2 rounded-lg transition flex items-center gap-1 shadow-sm">
+              <span>🗺️</span> PAGASA iHeatMap &rarr;
+            </a>
+            <button onclick="fetchAllPagasaStations()" class="bg-deped-blue hover:bg-deped-darkblue text-white font-bold px-3.5 py-2 rounded-lg transition shadow flex items-center gap-1">
+              <span>🔄</span> Refresh All Stations
+            </button>
+          </div>
+        </div>
+
+        <!-- Bulletin Statistics Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+            <div class="text-[11px] font-semibold text-slate-500 uppercase">Monitored Stations</div>
+            <div class="text-2xl font-black text-slate-800 mt-0.5" id="pagasaTotalStationsCount">30</div>
+            <div class="text-[10px] text-slate-400">PAGASA Surface Observatories</div>
+          </div>
+          <div class="bg-red-50 border border-red-200 rounded-xl p-3.5">
+            <div class="text-[11px] font-semibold text-red-700 uppercase">In Danger Tier (≥42°C)</div>
+            <div class="text-2xl font-black text-red-700 mt-0.5" id="pagasaDangerStationsCount">--</div>
+            <div class="text-[10px] text-red-600 font-semibold">Automatic ADM Shift Triggered</div>
+          </div>
+          <div class="bg-orange-50 border border-orange-200 rounded-xl p-3.5">
+            <div class="text-[11px] font-semibold text-orange-700 uppercase">Highest Heat Index Today</div>
+            <div class="text-2xl font-black text-orange-800 mt-0.5" id="pagasaHighestIndex">--</div>
+            <div class="text-[10px] text-slate-500 truncate" id="pagasaHighestLocation">Loading station...</div>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5">
+            <div class="text-[11px] font-semibold text-emerald-700 uppercase">Coolest / Normal Station</div>
+            <div class="text-2xl font-black text-emerald-800 mt-0.5" id="pagasaLowestIndex">--</div>
+            <div class="text-[10px] text-slate-500 truncate" id="pagasaLowestLocation">Loading station...</div>
+          </div>
+        </div>
+
+        <!-- Filter & Search Controls -->
+        <div class="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <div class="flex items-center gap-2 flex-grow max-w-md">
+            <span class="text-slate-400 text-sm">🔍</span>
+            <input type="text" id="pagasaSearchInput" oninput="filterPagasaStations()" placeholder="Search station, city, or province (e.g. Dagupan, Manila, Cebu)..." class="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-deped-blue">
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-semibold text-slate-600 whitespace-nowrap">Filter Island Group:</label>
+            <select id="pagasaRegionFilter" onchange="filterPagasaStations()" class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-deped-blue font-medium">
+              <option value="all">All Regions</option>
+              <option value="NCR">Metro Manila (NCR)</option>
+              <option value="Luzon">Luzon (Northern, Central, Southern)</option>
+              <option value="Visayas">Visayas</option>
+              <option value="Mindanao">Mindanao</option>
+              <option value="danger">Danger Tier Only (≥42°C)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- PAGASA Synoptic Stations Table -->
+        <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-left text-xs sm:text-sm">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700 uppercase text-[11px] font-bold border-b border-slate-200">
+                <th class="py-3 px-4">PAGASA Synoptic Station</th>
+                <th class="py-3 px-4">Island / Region</th>
+                <th class="py-3 px-4">Air Temp (°C)</th>
+                <th class="py-3 px-4">Rel. Humidity (%)</th>
+                <th class="py-3 px-4">Heat Index (°C)</th>
+                <th class="py-3 px-4">PAGASA Category</th>
+                <th class="py-3 px-4">DepEd Mandate</th>
+                <th class="py-3 px-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="pagasaBulletinTableBody" class="divide-y divide-slate-100">
+              <!-- Dynamically populated via JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-[11px] flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div>
+            *Data derived from DOST-PAGASA Synoptic Weather Station grid and Open-Meteo Philippine observation feed. Calculated via standard PAGASA Rothfusz multi-regression matrix.
+          </div>
+          <span class="text-slate-400 font-mono" id="pagasaLastRefreshed">Last updated: Just now</span>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- TAB 2: INTERACTIVE CALCULATOR & CUSTOM WEATHER SIMULATION -->
+    <section id="view-calculator" class="tab-content hidden space-y-6">
+      
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="border-b border-slate-200 pb-4">
+          <h2 class="text-xl font-black text-slate-800 flex items-center gap-2">
+            <span>🧮</span> Interactive DepEd Heat Index Calculator
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1">
+            Compute the precise Heat Index using the official NOAA / PAGASA Rothfusz multi-regression formula. Ideal for classrooms, laboratory readings, or localized campus digital thermo-hygrometer sensors.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
+          
+          <!-- Input Controls (6 cols) -->
+          <div class="lg:col-span-6 space-y-5">
+            
+            <!-- Temperature Input -->
+            <div>
+              <div class="flex justify-between items-center mb-1.5">
+                <label for="inputTemp" class="text-xs font-bold text-slate-700 uppercase">Dry-Bulb Air Temperature</label>
+                <span class="text-xs font-mono font-bold text-deped-blue" id="dispTempSlider">35.0 °C</span>
+              </div>
+              <input type="range" id="inputTemp" min="20" max="50" step="0.5" value="35" oninput="onManualCalculatorChange()" class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-deped-blue">
+              <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                <span>20°C (Cool)</span>
+                <span>35°C (Warm)</span>
+                <span>50°C (Extreme)</span>
+              </div>
+            </div>
+
+            <!-- Humidity Input -->
+            <div>
+              <div class="flex justify-between items-center mb-1.5">
+                <label for="inputHumidity" class="text-xs font-bold text-slate-700 uppercase">Relative Humidity (%)</label>
+                <span class="text-xs font-mono font-bold text-deped-blue" id="dispHumiditySlider">65 %</span>
+              </div>
+              <input type="range" id="inputHumidity" min="10" max="100" step="1" value="65" oninput="onManualCalculatorChange()" class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-deped-blue">
+              <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                <span>10% (Dry)</span>
+                <span>50% (Moderate)</span>
+                <span>100% (Saturated)</span>
+              </div>
+            </div>
+
+            <!-- Direct Numeric Quick Inputs -->
+            <div class="grid grid-cols-2 gap-4 pt-2">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Exact Temp (°C)</label>
+                <input type="number" id="numInputTemp" value="35.0" step="0.1" min="15" max="55" oninput="syncManualInputs('temp')" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-deped-blue">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Exact Humidity (%)</label>
+                <input type="number" id="numInputHumidity" value="65" step="1" min="5" max="100" oninput="syncManualInputs('hum')" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-deped-blue">
+              </div>
+            </div>
+
+            <!-- Preset Scenarios -->
+            <div class="pt-2">
+              <span class="text-xs font-bold text-slate-500 uppercase block mb-2">Simulate Common Philippine Weather Scenarios:</span>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button onclick="setScenario(28, 60)" class="px-2 py-1.5 rounded-lg text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold hover:bg-emerald-100 transition">
+                  Normal Morning (29°C)
+                </button>
+                <button onclick="setScenario(33, 60)" class="px-2 py-1.5 rounded-lg text-xs bg-amber-50 text-amber-700 border border-amber-200 font-semibold hover:bg-amber-100 transition">
+                  Warm Noon (39°C)
+                </button>
+                <button onclick="setScenario(35, 65)" class="px-2 py-1.5 rounded-lg text-xs bg-orange-50 text-orange-700 border border-orange-200 font-semibold hover:bg-orange-100 transition">
+                  Danger Tier (43°C)
+                </button>
+                <button onclick="setScenario(38, 75)" class="px-2 py-1.5 rounded-lg text-xs bg-red-50 text-red-700 border border-red-200 font-semibold hover:bg-red-100 transition">
+                  Severe Peak (53°C)
+                </button>
+              </div>
+            </div>
+
+            <!-- Apply To Main Dashboard Button -->
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+              <span class="text-xs text-slate-500">Want to broadcast these readings across the system?</span>
+              <button onclick="applyCalculatedToLive()" class="bg-deped-blue hover:bg-deped-darkblue text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow">
+                Apply to School Dashboard &rarr;
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Calculated Output Card (6 cols) -->
+          <div class="lg:col-span-6 bg-slate-50 rounded-2xl p-6 border border-slate-200 flex flex-col justify-between">
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Calculated Heat Index Result</div>
+              
+              <div class="mt-4 flex items-baseline gap-2">
+                <span id="calcResultVal" class="text-6xl font-black text-red-600">43.8</span>
+                <span class="text-3xl font-bold text-slate-500">°C</span>
+              </div>
+
+              <div class="mt-2">
+                <span id="calcResultBadge" class="inline-block px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wide bg-red-100 text-red-800 border border-red-300">
+                  DANGER (PANGANIB)
+                </span>
+              </div>
+
+              <!-- Impact Analysis -->
+              <div class="mt-6 space-y-3">
+                <div class="p-3.5 rounded-xl bg-white border border-slate-200">
+                  <div class="text-xs font-bold text-slate-700 uppercase mb-1">Human Body Physiological Effect:</div>
+                  <p id="calcPhysioEffect" class="text-xs text-slate-600 leading-relaxed">
+                    Heat cramps and heat exhaustion are likely. Continued physical activity could lead to heat stroke.
+                  </p>
+                </div>
+
+                <div class="p-3.5 rounded-xl bg-white border border-slate-200">
+                  <div class="text-xs font-bold text-deped-blue uppercase mb-1">DepEd Policy Action:</div>
+                  <p id="calcDepEdPolicy" class="text-xs text-slate-700 leading-relaxed font-medium">
+                    Automatic suspension of in-person classes. School heads issue advisory to shift to Alternative Delivery Modes (Modular / Online).
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mathematical Reference -->
+            <div class="mt-6 pt-3 border-t border-slate-200 text-[11px] text-slate-400">
+              *Computed with National Weather Service Rothfusz Polynomial regression equation with humidity adjustments, as standardized by DOST-PAGASA.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 3: CLASSROOM / MULTI-ROOM HEAT INDEX LOGGER -->
+    <section id="view-rooms" class="tab-content hidden space-y-6">
+      
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-slate-200 gap-4">
+          <div>
+            <h2 class="text-xl font-black text-slate-800 flex items-center gap-2">
+              <span>🏫</span> Campus Classroom Heat Index Logger
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">
+              Upper-floor classrooms under galvanized iron (tin) roofs can be 3°C to 7°C hotter than outside. Track and log temperatures per classroom or building to trigger room transfers or localized dismissals.
+            </p>
+          </div>
+          <button onclick="openAddRoomModal()" class="bg-deped-blue hover:bg-deped-darkblue text-white text-xs font-bold px-4 py-2.5 rounded-lg transition shadow flex items-center gap-1.5 self-start md:self-auto">
+            <span>➕</span> Log New Room Reading
+          </button>
+        </div>
+
+        <!-- Room Statistics Summary Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+            <div class="text-[11px] font-semibold text-slate-500 uppercase">Monitored Rooms</div>
+            <div class="text-2xl font-black text-slate-800 mt-0.5" id="totalRoomsCount">0</div>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5">
+            <div class="text-[11px] font-semibold text-emerald-700 uppercase">Normal / Safe (&lt;33°C)</div>
+            <div class="text-2xl font-black text-emerald-800 mt-0.5" id="safeRoomsCount">0</div>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5">
+            <div class="text-[11px] font-semibold text-amber-700 uppercase">Extreme Caution (33-41°C)</div>
+            <div class="text-2xl font-black text-amber-800 mt-0.5" id="cautionRoomsCount">0</div>
+          </div>
+          <div class="bg-red-50 border border-red-200 rounded-xl p-3.5">
+            <div class="text-[11px] font-semibold text-red-700 uppercase">Danger Tier (≥42°C)</div>
+            <div class="text-2xl font-black text-red-800 mt-0.5" id="dangerRoomsCount">0</div>
+          </div>
+        </div>
+
+        <!-- Rooms Table / List -->
+        <div class="mt-6 overflow-x-auto">
+          <table class="w-full text-left text-xs sm:text-sm">
+            <thead>
+              <tr class="bg-slate-100 text-slate-600 uppercase text-[11px] font-bold border-b border-slate-200">
+                <th class="py-3 px-4">Room / Campus Area</th>
+                <th class="py-3 px-4">Building & Floor</th>
+                <th class="py-3 px-4">Temp (°C)</th>
+                <th class="py-3 px-4">Humidity (%)</th>
+                <th class="py-3 px-4">Heat Index</th>
+                <th class="py-3 px-4">Status & Action</th>
+                <th class="py-3 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="roomsTableBody" class="divide-y divide-slate-100">
+              <!-- Dynamically populated via JS -->
+            </tbody>
+          </table>
+          <div id="noRoomsNotice" class="text-center py-10 text-slate-400 text-xs hidden">
+            No classroom readings logged yet. Click "Log New Room Reading" to add measurements.
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- TAB 4: OFFICIAL DEPED ADVISORY & MEMO GENERATOR -->
+    <section id="view-advisory" class="tab-content hidden space-y-6">
+      
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-3">
+          <div>
+            <h2 class="text-xl font-black text-slate-800 flex items-center gap-2">
+              <span>📢</span> DepEd Official School Advisory Generator
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">
+              Instantly draft formal school notices and social media broadcasts compliant with DepEd Order 037, s. 2022. Ready for printing or copying to School Facebook Pages, PTA chatrooms, and SMS announcements.
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="copyAdvisoryText()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3.5 py-2 rounded-lg transition border border-slate-300 flex items-center gap-1.5">
+              <span>📋</span> Copy Text for FB/SMS
+            </button>
+            <button onclick="printOfficialAdvisory()" class="bg-deped-blue hover:bg-deped-darkblue text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow flex items-center gap-1.5">
+              <span>🖨️</span> Print Official Memo
+            </button>
+          </div>
+        </div>
+
+        <!-- Advisory Options Controls -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs mt-4">
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">Advisory Modality Mode:</label>
+            <select id="advDeliveryMode" onchange="generateAdvisoryDocument()" class="w-full bg-white border border-slate-300 rounded-lg p-2 focus:ring-1 focus:ring-deped-blue">
+              <option value="adm_modular">Modular Distance Learning (Printed Modules)</option>
+              <option value="adm_online">Online Distance Learning (Synchronous/Asynchronous)</option>
+              <option value="adm_blended">Blended Learning Modality</option>
+              <option value="suspension_total">Complete Cancellation of Classes</option>
+              <option value="caution_regular">Regular Classes with Precautionary Measures</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">Affected Levels:</label>
+            <select id="advAffectedLevels" onchange="generateAdvisoryDocument()" class="w-full bg-white border border-slate-300 rounded-lg p-2 focus:ring-1 focus:ring-deped-blue">
+              <option value="all">All Levels (Kindergarten to Senior High School)</option>
+              <option value="elementary">Kindergarten to Elementary Only</option>
+              <option value="jhs_shs">Junior and Senior High School Only</option>
+              <option value="afternoon">Afternoon Shift / Classes Only</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">Effective Date / Time:</label>
+            <input type="text" id="advEffectiveDate" oninput="generateAdvisoryDocument()" value="Effective Immediately" class="w-full bg-white border border-slate-300 rounded-lg p-2 focus:ring-1 focus:ring-deped-blue">
+          </div>
+        </div>
+
+        <!-- OFFICIAL MEMORANDUM PREVIEW DOCUMENT (Printable) -->
+        <div class="mt-6 border border-slate-300 rounded-xl bg-white p-6 sm:p-10 shadow-sm font-serif max-w-4xl mx-auto" id="printableAdvisory">
+          
+          <!-- Official DepEd Letterhead -->
+          <div class="text-center border-b-2 border-slate-800 pb-4 mb-6">
+            <div class="text-[12px] uppercase tracking-widest text-slate-600 font-sans">Republika ng Pilipinas</div>
+            <div class="text-[14px] uppercase font-bold tracking-wider text-deped-blue font-sans">Kagawaran ng Edukasyon</div>
+            <div class="text-[12px] text-slate-700 font-sans font-medium" id="memoDispRegion">Region NCR • National Capital Region</div>
+            <div class="text-[12px] text-slate-700 font-sans font-medium" id="memoDispDivision">Schools Division Office of Manila</div>
+            <div class="text-[16px] font-bold text-slate-900 font-sans mt-1 uppercase" id="memoDispSchool">Ramon Magsaysay High School</div>
+            <div class="text-[11px] text-slate-500 font-sans" id="memoDispSchoolDetails">School ID: 301234 • Manila, Philippines</div>
+          </div>
+
+          <!-- Memo Metadata -->
+          <div class="space-y-1 text-xs sm:text-sm font-sans mb-6">
+            <div class="flex"><strong class="w-24">MEMORANDUM:</strong> <span class="font-bold uppercase text-red-600" id="memoSubjectTitle">SCHOOL ADVISORY: SHIFT TO ALTERNATIVE DELIVERY MODES (ADM) DUE TO DANGEROUS HEAT INDEX</span></div>
+            <div class="flex"><strong class="w-24">FOR:</strong> <span>All Public School Teachers, Non-Teaching Personnel, Learners, and Parents/Guardians</span></div>
+            <div class="flex"><strong class="w-24">FROM:</strong> <span id="memoDispPrincipal">Dr. Maria Santos, School Principal IV</span></div>
+            <div class="flex"><strong class="w-24">DATE:</strong> <span id="memoCurrentDate">October 28, 2026</span></div>
+            <div class="flex"><strong class="w-24">REFERENCE:</strong> <span class="text-slate-600">DepEd Order No. 037, series 2022 / PAGASA Heat Advisory</span></div>
+          </div>
+
+          <!-- Memo Body -->
+          <div class="text-xs sm:text-sm leading-relaxed space-y-4 font-sans text-slate-800 border-t border-slate-200 pt-4" id="memoDynamicContent">
+            <!-- Dynamically injected -->
+          </div>
+
+          <!-- Signatures Section -->
+          <div class="mt-12 pt-6 border-t border-slate-200 font-sans text-xs sm:text-sm grid grid-cols-2 gap-8">
+            <div>
+              <div class="text-slate-500 text-[11px]">Approved and Issued by:</div>
+              <div class="font-bold text-slate-900 mt-6 uppercase" id="memoSignPrincipal">Dr. Maria Santos</div>
+              <div class="text-slate-600 text-xs">School Head / Principal</div>
+            </div>
+            <div class="text-right">
+              <div class="text-slate-500 text-[11px]">Noted by:</div>
+              <div class="font-bold text-slate-900 mt-6 uppercase">Schools Division Superintendent</div>
+              <div class="text-slate-600 text-xs">Division DRRM Focal Person</div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- TAB 5: HEALTH GUIDELINES & FIRST AID PROTOCOLS -->
+    <section id="view-firstaid" class="tab-content hidden space-y-6">
+      
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="border-b border-slate-200 pb-4">
+          <h2 class="text-xl font-black text-slate-800 flex items-center gap-2">
+            <span>🩺</span> DepEd DRRMS & DOH Heat Illness First-Aid Matrix
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1">
+            Standard operating procedures for school clinic personnel, clinic teachers, and class advisers when learners or staff manifest heat-related illnesses.
+          </p>
+        </div>
+
+        <!-- 3-Tier Illness Comparison Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+          
+          <!-- 1. Heat Cramps -->
+          <div class="bg-amber-50/60 border border-amber-200 rounded-2xl p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full">Mild Warning</span>
+                <span class="text-2xl">🦵</span>
+              </div>
+              <h3 class="text-lg font-bold text-amber-900 mt-2">1. Heat Cramps (Pulikat)</h3>
+              
+              <div class="mt-3">
+                <div class="text-xs font-bold text-slate-700 uppercase">Symptoms:</div>
+                <ul class="text-xs text-slate-600 list-disc list-inside space-y-1 mt-1">
+                  <li>Painful muscle spasms (legs, arms, abdomen)</li>
+                  <li>Heavy sweating during activity</li>
+                  <li>Mild dizziness or fatigue</li>
+                </ul>
+              </div>
+
+              <div class="mt-4 pt-3 border-t border-amber-200">
+                <div class="text-xs font-bold text-slate-700 uppercase">First-Aid Actions:</div>
+                <ul class="text-xs text-slate-600 list-disc list-inside space-y-1 mt-1">
+                  <li>Move learner to shaded, well-ventilated area</li>
+                  <li>Gently stretch and massage cramped muscles</li>
+                  <li>Provide cool water or electrolyte solution in small sips</li>
+                  <li>Do NOT resume heavy physical activity</li>
+                </ul>
+              </div>
+            </div>
+            <div class="mt-4 text-[11px] font-semibold text-amber-800">
+              Recovery Time: 30 - 60 minutes
+            </div>
+          </div>
+
+          <!-- 2. Heat Exhaustion -->
+          <div class="bg-orange-50/70 border border-orange-200 rounded-2xl p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-orange-700 bg-orange-100 px-2.5 py-0.5 rounded-full">Moderate Alert</span>
+                <span class="text-2xl">🥵</span>
+              </div>
+              <h3 class="text-lg font-bold text-orange-900 mt-2">2. Heat Exhaustion</h3>
+              
+              <div class="mt-3">
+                <div class="text-xs font-bold text-slate-700 uppercase">Symptoms:</div>
+                <ul class="text-xs text-slate-600 list-disc list-inside space-y-1 mt-1">
+                  <li>Heavy sweating with cold, pale, clammy skin</li>
+                  <li>Fast, weak pulse & shallow breathing</li>
+                  <li>Nausea, vomiting, headache, fainting</li>
+                  <li>Normal or slightly elevated body temp</li>
+                </ul>
+              </div>
+
+              <div class="mt-4 pt-3 border-t border-orange-200">
+                <div class="text-xs font-bold text-slate-700 uppercase">First-Aid Actions:</div>
+                <ul class="text-xs text-slate-600 list-disc list-inside space-y-1 mt-1">
+                  <li>Transfer immediately to air-conditioned clinic</li>
+                  <li>Loosen tight clothing, remove socks and shoes</li>
+                  <li>Apply cold, wet towels to neck, armpits, and groin</li>
+                  <li>Sip cool water slowly if fully conscious</li>
+                  <li>If vomiting occurs, position on their side</li>
+                </ul>
+              </div>
+            </div>
+            <div class="mt-4 text-[11px] font-semibold text-orange-800">
+              *If symptoms worsen or last &gt;1 hour, call for medical transport!
+            </div>
+          </div>
+
+          <!-- 3. Heat Stroke -->
+          <div class="bg-red-50 border-2 border-red-300 rounded-2xl p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-red-800 bg-red-100 px-2.5 py-0.5 rounded-full animate-pulse">Critical Emergency</span>
+                <span class="text-2xl">🚨</span>
+              </div>
+              <h3 class="text-lg font-black text-red-900 mt-2">3. Heat Stroke</h3>
+              
+              <div class="mt-3">
+                <div class="text-xs font-bold text-slate-700 uppercase">Symptoms:</div>
+                <ul class="text-xs text-slate-700 list-disc list-inside space-y-1 mt-1">
+                  <li><strong>High body temp (≥ 40°C / 104°F)</strong></li>
+                  <li>Hot, red, dry skin (or heavy sweat in collapse)</li>
+                  <li>Rapid, strong pulse</li>
+                  <li>Confusion, slurred speech, seizures, loss of consciousness</li>
+                </ul>
+              </div>
+
+              <div class="mt-4 pt-3 border-t border-red-200">
+                <div class="text-xs font-bold text-red-700 uppercase">Emergency Protocol (Call 911!):</div>
+                <ul class="text-xs text-slate-700 list-disc list-inside space-y-1 mt-1">
+                  <li><strong>IMMEDIATE EMERGENCY: Dial 911 / Red Cross 143</strong></li>
+                  <li>Rapid cooling: immerse in cool water or cold shower</li>
+                  <li>Pack ice / cold compress to neck, armpits, groin</li>
+                  <li>Do NOT force fluids if person is unconscious</li>
+                  <li>Notify parents and School DRRM Officer immediately</li>
+                </ul>
+              </div>
+            </div>
+            <div class="mt-4 text-[11px] font-bold text-red-700 bg-white p-2 rounded border border-red-200 text-center">
+              ⚠️ Medical Emergency: Can be fatal within minutes!
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Emergency Directory & Hotlines -->
+        <div class="mt-8 bg-slate-50 rounded-2xl p-6 border border-slate-200">
+          <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <span>📞</span> Emergency Hotlines Directory (Philippines)
+          </h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+            <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+              <div class="text-slate-400 font-semibold text-[10px]">National Emergency Hotline</div>
+              <div class="text-base font-extrabold text-red-600 mt-1">911</div>
+              <div class="text-[11px] text-slate-500">PNP, BFP, Medical EMS</div>
+            </div>
+            <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+              <div class="text-slate-400 font-semibold text-[10px]">Philippine Red Cross</div>
+              <div class="text-base font-extrabold text-red-600 mt-1">143 / (02) 8790-2300</div>
+              <div class="text-[11px] text-slate-500">Ambulance & Disaster Relief</div>
+            </div>
+            <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+              <div class="text-slate-400 font-semibold text-[10px]">DepEd DRRMS Central</div>
+              <div class="text-base font-extrabold text-deped-blue mt-1">(02) 8637-4933</div>
+              <div class="text-[11px] text-slate-500">Disaster Risk Operations</div>
+            </div>
+            <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+              <div class="text-slate-400 font-semibold text-[10px]">DOH Health Line</div>
+              <div class="text-base font-extrabold text-slate-800 mt-1">1555 / (02) 8651-7800</div>
+              <div class="text-[11px] text-slate-500">Department of Health Support</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- MODAL: ADD CLASSROOM READING -->
+  <div id="addRoomModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+        <h3 class="text-base font-bold text-slate-800">Log Classroom Reading</h3>
+        <button onclick="closeAddRoomModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+      </div>
+      <form onsubmit="submitRoomReading(event)" class="space-y-4 mt-4 text-xs sm:text-sm">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Room Name / Section</label>
+          <input type="text" id="modalRoomName" required placeholder="e.g. Room 204 - Grade 10 Bonifacio" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-deped-blue">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Building & Floor</label>
+          <input type="text" id="modalBuildingFloor" required placeholder="e.g. Building C, 3rd Floor (Under Roof)" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-deped-blue">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Room Temp (°C)</label>
+            <input type="number" id="modalRoomTemp" step="0.1" required value="36.0" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-deped-blue">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Humidity (%)</label>
+            <input type="number" id="modalRoomHumidity" step="1" required value="65" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-deped-blue">
+          </div>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Ventilation Notes</label>
+          <input type="text" id="modalRoomNotes" placeholder="e.g. 2 wall fans broken; direct sunlight" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-deped-blue">
+        </div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeAddRoomModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+          <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-deped-blue hover:bg-deped-darkblue rounded-lg shadow">Save Reading</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIGURE SCHOOL PROFILE -->
+  <div id="schoolModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+        <h3 class="text-base font-bold text-slate-800">School Profile & Institutional Settings</h3>
+        <button onclick="closeSchoolModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+      </div>
+      <form onsubmit="saveSchoolProfile(event)" class="space-y-3.5 mt-4 text-xs sm:text-sm">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Official School Name</label>
+          <input type="text" id="cfgSchoolName" required class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-deped-blue">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">DepEd School ID</label>
+            <input type="text" id="cfgSchoolId" required class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-deped-blue">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Region</label>
+            <input type="text" id="cfgSchoolRegion" required class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-deped-blue">
+          </div>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Schools Division Office</label>
+          <input type="text" id="cfgSchoolDivision" required class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-deped-blue">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">School Head / Principal Name & Title</label>
+          <input type="text" id="cfgPrincipalName" required class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-deped-blue">
+        </div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeSchoolModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+          <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-deped-blue hover:bg-deped-darkblue rounded-lg shadow">Save Settings</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="bg-slate-900 text-slate-400 text-xs py-6 mt-12 border-t border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center space-x-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+        <span class="text-slate-300 font-medium">DepEd Heat Index Monitoring System</span>
+        <span>•</span>
+        <span>DepEd Guidelines Compliant</span>
+      </div>
+      <div class="text-center sm:text-right text-[11px] text-slate-500">
+        Data Sources: DOST-PAGASA & Open-Meteo API • Rotshfusz Regression Protocol
+      </div>
+    </div>
+  </footer>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
